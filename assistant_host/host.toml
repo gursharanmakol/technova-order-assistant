@@ -1,0 +1,7 @@
+# TechNova order assistant: Host configuration.
+
+[server.orders]
+module = "order_service.server"
+
+[model]
+name = "scripted-stand-in"
