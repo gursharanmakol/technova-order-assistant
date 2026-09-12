@@ -5,3 +5,7 @@ module = "order_service.server"
 
 [model]
 name = "scripted-stand-in"
+
+[tools]
+# Approved for the support assistant in security review SEC-142 (2026-09-12).
+allowed = ["lookup_order", "list_order_items"]

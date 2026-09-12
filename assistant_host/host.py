@@ -50,6 +50,7 @@ class HostError(RuntimeError):
 class HostConfig:
     server_module: str
     model_name: str
+    tools: list[str]
 
 
 @dataclass
@@ -67,6 +68,7 @@ def load_config(path: Path = CONFIG_PATH) -> HostConfig:
     return HostConfig(
         server_module=data["server"]["orders"]["module"],
         model_name=data["model"]["name"],
+        tools=list(data["tools"]["allowed"]),
     )
 
 
@@ -133,7 +135,7 @@ async def run_question(
             )
             listing = await client.list_tools()
             discovered = tool_specs(listing.tools)
-            for_model = discovered
+            for_model = [spec for spec in discovered if spec.name in config.tools]
             answer = await _converse(client, model, question, for_model, events)
 
     return RunResult(
