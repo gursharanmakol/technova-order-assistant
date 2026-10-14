@@ -151,7 +151,7 @@ def _call_result(outcome: ToolOutcome) -> CallToolResult:
 
 
 @server.tool(annotations=_READ_ONLY)
-def lookup_order(order_id: OrderId) -> Annotated[CallToolResult, OrderStatusResult]:
+def get_order_status(order_id: OrderId) -> Annotated[CallToolResult, OrderStatusResult]:
     """Return the current status, carrier, and estimated delivery date for an order."""
     return _call_result(_STORE.order_status(order_id))
 
