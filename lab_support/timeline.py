@@ -83,16 +83,20 @@ def _what(event: dict[str, Any], methods_by_id: dict[Any, str]) -> str:
 
 
 def render_trace(header: dict[str, Any], events: list[dict[str, Any]]) -> str:
+    from lab_support.term import bold, dim
+
+    columns = "   #  from -> to       event"
+    hint = "Full content of one event: uv run python lab.py show <number>"
     lines = [
         "Trace of the last run",
         f"Question: {header['question']}",
         f"Model:    {_model_label(header)}",
         "",
-        "   #  from -> to       event",
+        bold(columns),
     ]
     for number, parties, what in describe(events):
         lines.append(f"{number:>4}  {parties:<16} {what}")
-    lines += ["", "Full content of one event: uv run python lab.py show <number>"]
+    lines += ["", dim(hint)]
     return "\n".join(lines)
 
 
@@ -100,17 +104,20 @@ _SCHEMA_KEYS = {"inputSchema", "outputSchema", "input_schema", "$defs"}
 
 
 def render_event(header: dict[str, Any], events: list[dict[str, Any]], number: int, brief: bool = False) -> str:
+    from lab_support.term import bold, color_json, dim
+
     rows = describe(events)
     _, parties, what = rows[number - 1]
     event = events[number - 1]
     body = event.get("message") if event.get("source") == "wire" else event.get("payload")
     if body is None:
         body = {key: value for key, value in event.items() if key not in ("type", "source", "direction")}
-    lines = [f"Event {number}   {parties}   {what}"]
+    lines = [bold(f"Event {number}   {parties}   {what}")]
     if brief:
         body = _collapse_schemas(body)
-        lines.append("(schemas shown as {...}; run without --brief for the full content)")
-    return "\n".join([*lines, "", json.dumps(body, indent=2, ensure_ascii=True)])
+        lines.append(dim("(schemas shown as {...}; run without --brief for the full content)"))
+    dumped = json.dumps(body, indent=2, ensure_ascii=True)
+    return "\n".join([*lines, "", color_json(dumped)])
 
 
 def _collapse_schemas(value: Any) -> Any:

@@ -17,30 +17,48 @@ import subprocess
 import sys
 from pathlib import Path
 
+from lab_support.term import bold, dim, finish, paint_check_line
+
 MIN_PYTHON = (3, 12)
 TESTED_MCP = "2.3.0"
 EXAMPLE = 'uv run python lab.py ask "What is the status of order ORD-10042?"'
 
 
+def _emit(text: str = "") -> None:
+    print(text)
+
+
+def _fail(message: str) -> int:
+    _emit(paint_check_line(message) if message.startswith("[FAIL]") else message)
+    finish()
+    return 1
+
+
 def cmd_check() -> int:
-    print("TechNova order assistant: MCP lab")
+    _emit("TechNova order assistant: MCP lab")
     version = ".".join(str(part) for part in sys.version_info[:3])
     if sys.version_info[:2] < MIN_PYTHON:
-        print(f"[FAIL] Python {version}. This lab needs Python 3.12 or newer.")
+        _emit(paint_check_line(f"[FAIL] Python {version}. This lab needs Python 3.12 or newer."))
+        finish()
         return 1
-    print(f"[OK] Python {version}")
+    _emit(paint_check_line(f"[OK] Python {version}"))
 
     try:
         from importlib.metadata import version as package_version
 
         mcp_version = package_version("mcp")
     except Exception:  # noqa: BLE001 - reported to the learner
-        print("[FAIL] The mcp package is not installed. See the setup steps in the README.")
+        _emit(paint_check_line("[FAIL] The mcp package is not installed. See the setup steps in the README."))
+        finish()
         return 1
     if mcp_version == TESTED_MCP:
-        print(f"[OK] mcp {mcp_version}")
+        _emit(paint_check_line(f"[OK] mcp {mcp_version}"))
     else:
-        print(f"[WARN] mcp {mcp_version} installed, the lab was tested with {TESTED_MCP}. Output may differ.")
+        _emit(
+            paint_check_line(
+                f"[WARN] mcp {mcp_version} installed, the lab was tested with {TESTED_MCP}. Output may differ."
+            )
+        )
 
     try:
         from order_service import __version__ as service_version
@@ -49,20 +67,23 @@ def cmd_check() -> int:
 
         orders = len(OrderStore().orders)
     except Exception as exc:  # noqa: BLE001 - reported to the learner
-        print(f"[FAIL] The order service did not load: {type(exc).__name__}: {exc}")
+        _emit(paint_check_line(f"[FAIL] The order service did not load: {type(exc).__name__}: {exc}"))
+        finish()
         return 1
-    print(f"[OK] Order service: {SERVER_NAME} {service_version}")
-    print(f"[OK] Order records: {orders}")
+    _emit(paint_check_line(f"[OK] Order service: {SERVER_NAME} {service_version}"))
+    _emit(paint_check_line(f"[OK] Order records: {orders}"))
 
     try:
         from assistant_host.host import load_config
 
         load_config()
     except Exception as exc:  # noqa: BLE001 - reported to the learner
-        print(f"[FAIL] The assistant configuration did not load: {type(exc).__name__}: {exc}")
+        _emit(paint_check_line(f"[FAIL] The assistant configuration did not load: {type(exc).__name__}: {exc}"))
+        finish()
         return 1
-    print("[OK] Assistant configuration")
-    print(f"Ready. Next: {EXAMPLE}")
+    _emit(paint_check_line("[OK] Assistant configuration"))
+    _emit(paint_check_line(f"Ready. Next: {EXAMPLE}"))
+    finish()
     return 0
 
 
@@ -74,10 +95,12 @@ def cmd_ask(question: str) -> int:
 
     result = anyio.run(run_question, question)
     save_run(result)
-    print(result.answer)
-    print()
+    _emit(result.answer)
+    _emit()
     if not result.model_is_real_llm:
-        print(f"(answered by {result.model_name}: a deterministic simulated model, not an LLM)")
+        note = f"(answered by {result.model_name}: a deterministic simulated model, not an LLM)"
+        _emit(dim(note))
+    finish()
     return 0
 
 
@@ -85,32 +108,32 @@ def _load_last_run():
     from lab_support.timeline import RUN_FILE, load_run
 
     if not RUN_FILE.exists():
-        print(f"[FAIL] No saved run yet. First run: {EXAMPLE}")
-        return None
-    return load_run(RUN_FILE)
+        return None, f"[FAIL] No saved run yet. First run: {EXAMPLE}"
+    return load_run(RUN_FILE), None
 
 
 def cmd_trace() -> int:
     from lab_support.timeline import render_trace
 
-    run = _load_last_run()
-    if run is None:
-        return 1
-    print(render_trace(*run))
+    run, err = _load_last_run()
+    if err is not None:
+        return _fail(err)
+    _emit(render_trace(*run))
+    finish()
     return 0
 
 
 def cmd_show(number: int, brief: bool) -> int:
     from lab_support.timeline import render_event
 
-    run = _load_last_run()
-    if run is None:
-        return 1
+    run, err = _load_last_run()
+    if err is not None:
+        return _fail(err)
     header, events = run
     if not 1 <= number <= len(events):
-        print(f"[FAIL] No event {number}. The last run has events 1 to {len(events)}.")
-        return 1
-    print(render_event(header, events, number, brief=brief))
+        return _fail(f"[FAIL] No event {number}. The last run has events 1 to {len(events)}.")
+    _emit(render_event(header, events, number, brief=brief))
+    finish()
     return 0
 
 
@@ -123,11 +146,12 @@ def cmd_server_log() -> int:
     from lab_support.timeline import SERVER_LOG
 
     if not SERVER_LOG.exists():
-        print(f"[FAIL] No server log yet. First run: {EXAMPLE}")
-        return 1
-    print("Order service log from the last run (written by the server process itself)")
-    print()
-    print(SERVER_LOG.read_text(encoding="utf-8").rstrip())
+        return _fail(f"[FAIL] No server log yet. First run: {EXAMPLE}")
+    header = "Order service log from the last run (written by the server process itself)"
+    _emit(bold(header))
+    _emit()
+    _emit(SERVER_LOG.read_text(encoding="utf-8").rstrip())
+    finish()
     return 0
 
 

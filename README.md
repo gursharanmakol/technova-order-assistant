@@ -58,6 +58,8 @@ To trust an answer that should come from a tool, you need proof of six things fo
 
 Check them in order, for the tool that matters, and stop at the first stage you cannot prove. Any stage can be the one that fails. Proof at one stage says nothing about the next one.
 
+Stage numbers (1 to 6) are not the same as the event numbers in `trace`. Event numbers only count events in the order they happened in your last `ask`. Match each stage by the kind of evidence in the table, then open that event with `show`.
+
 ## Your assignment
 
 **Ticket SUP-2291**
